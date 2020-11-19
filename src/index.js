@@ -2,6 +2,7 @@ import React from 'react';
 
 const extractPropsFromString = attr => {
   let propsStr = attr.match(/\s*([^=]*)\s*=\s*"([^"]*)"/gi) || [];
+
   return Object.assign(
     {},
     ...propsStr
@@ -24,8 +25,10 @@ const cloneElement = (el, lastChild) => {
       {},
       cloneElement(el.props.children, lastChild)
     );
-  } else if (el.props) {
+  } else if (el.props && (lastChild[0] !== '')) {
     return React.cloneElement(el, {}, [...lastChild]);
+  } else if (el.props) {
+    return React.cloneElement(el, {});
   } else {
     return [el, [...lastChild]];
   }
@@ -46,7 +49,7 @@ const cloneElement = (el, lastChild) => {
   }
  */
 
-const parseText = (text = '', fn = () => {}) => {
+const parseText = (text = '', fn = () => { }) => {
   let tags = [];
   let preTreeLen = 0;
   let nodes = [];
@@ -57,9 +60,39 @@ const parseText = (text = '', fn = () => {}) => {
     let [substring, isClosing, tag] = match;
     let index = match['index'];
     tag = (tag || '').trim();
-    isClosing = (isClosing || '').trim();
     substring = (substring || '').trim();
-    if (!isClosing) {
+    isClosing = (isClosing || '').trim();
+    let selfClosing = /<([^\/>]+)\/>/.test(substring);
+
+    if (selfClosing) {
+      let attr = substring.replace(/[<>]/gi, '').replace(tag, '');
+      let props = extractPropsFromString(attr);
+      let JsxEl = fn(tag, { ...props });
+
+      JsxEl = cloneElement(
+        JsxEl,
+        ''
+      );
+
+      nodes = [...nodes];
+
+      if (preTreeLen <= tags.length) {
+        nodes = [
+          ...nodes,
+          JsxEl,
+          text.slice(
+            text.indexOf('>', index) + 1,
+            text.indexOf('<', index + 1) == -1
+              ? Infinity
+              : text.indexOf('<', index + 1)
+          )
+        ];
+      } else {
+        nodes = cloneElement(JsxEl, nodes);
+      }
+
+      preTreeLen = tags.length;
+    } else if (!isClosing) {
       tags.push({ tag, substring, index });
     } else if (
       isClosing &&
@@ -96,6 +129,7 @@ const parseText = (text = '', fn = () => {}) => {
       } else {
         nodes = cloneElement(JsxEl, nodes);
       }
+
       preTreeLen = tags.length;
     } else {
       throw Error('Invalid string, no matching tag "' + tag + '"');
@@ -104,8 +138,8 @@ const parseText = (text = '', fn = () => {}) => {
   if (tags.length !== 0) {
     throw Error(
       'Invalid string, no matching tags : "' +
-        (tags.map(t => t.tag) || '').toString() +
-        '"'
+      (tags.map(t => t.tag) || '').toString() +
+      '"'
     );
   }
   return [

@@ -14,27 +14,33 @@ const Mention = props => {
 
 class Demo extends Component {
   render() {
+
+    const rendered = reactHtmlReplace(
+      `<italic>This is <bold>xml string</bold> with custom nested markup, <bold>we can get inner markup & attributes through props.</bold></italic> <mention id="123" name="raodurgesh">this is mention tag with id & name attributes</mention> <hashtag tag="howdymody" href="http://google.com"></hashtag>`,
+      (tag, props) => {
+        if (tag === 'bold') {
+          return <b />;
+        }
+        if (tag === 'italic') {
+          return <i />;
+        }
+        if (tag === 'br') {
+          return <br />;
+        }
+        if (tag === 'mention') {
+          const { name, id } = props;
+          return <Mention name={name} id={id}></Mention>;
+        }
+        if (tag === 'hashtag') {
+          const { tag, href } = props;
+          return <a href={href}>{`#${tag}`}</a>;
+        }
+      }
+    );
+
     return (
       <div>
-        {reactHtmlReplace(
-          `<italic>This is <bold> xml string</bold> with custom nexted markup,<bold> we can get inner markup & attribute  through props.</bold></italic> <mention id ="123" name ="raodurgesh">  this is mention tag with id & name attributes </mention> <hashtag tag="howdymody" href ="http://google.com"></hashtag>`,
-          (tag, props) => {
-            if (tag === 'bold') {
-              return <b />;
-            }
-            if (tag === 'italic') {
-              return <i />;
-            }
-            if (tag === 'mention') {
-              const { name, id } = props;
-              return <Mention name={name} id={id}></Mention>;
-            }
-            if (tag === 'hashtag') {
-              const { tag, href } = props;
-              return <a href={href}>{`#${tag}`}</a>;
-            }
-          }
-        )}
+        {rendered}
       </div>
     );
   }
