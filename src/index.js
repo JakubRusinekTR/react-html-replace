@@ -49,6 +49,8 @@ const cloneElement = (el, lastChild) => {
   }
  */
 
+const voidTags = ['area', 'base', 'br', 'col', 'hr', 'img', 'input', 'link', 'meta', 'param', 'command', 'keygen', 'source'];
+
 const parseText = (text = '', fn = () => { }) => {
   let tags = [];
   let preTreeLen = 0;
@@ -62,7 +64,7 @@ const parseText = (text = '', fn = () => { }) => {
     tag = (tag || '').trim();
     substring = (substring || '').trim();
     isClosing = (isClosing || '').trim();
-    let selfClosing = /<([^\/>]+)\/>/.test(substring);
+    let selfClosing = voidTags.includes(tag) || /<([^\/>]+)\/>/.test(substring);
 
     if (selfClosing) {
       let attr = substring.replace(/[<>]/gi, '').replace(tag, '');
