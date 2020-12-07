@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from 'react';
 import { render } from 'react-dom';
 
@@ -16,7 +17,7 @@ class Demo extends Component {
   render() {
 
     const rendered = reactHtmlReplace(
-      `<italic>This is <bold>xml string</bold> with custom nested markup, <bold>we can get inner markup & attributes through props.</bold></italic> <mention id="123" name="raodurgesh">this is mention tag with id & name attributes</mention> <hashtag tag="howdymody" href="http://google.com"></hashtag>`,
+      '<italic>This is <bold>xml string</bold> with custom nested markup, <bold>we can get inner markup & attributes through props.</bold></italic> <mention id="123" name="raodurgesh">this is mention tag with id & name attributes</mention> <hashtag tag="howdymody" href="http://google.com"></hashtag>',
       (tag, props) => {
         if (tag === 'bold') {
           return <b />;
@@ -29,7 +30,7 @@ class Demo extends Component {
         }
         if (tag === 'mention') {
           const { name, id } = props;
-          return <Mention name={name} id={id}></Mention>;
+          return <Mention name={name} id={id} />;
         }
         if (tag === 'hashtag') {
           const { tag, href } = props;
