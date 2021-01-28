@@ -1,12 +1,13 @@
 import React from 'react';
 
 const extractPropsFromString = attr => {
-  let propsStr = attr.match(/\s*([^=]*)\s*=\s*"([^"]*)"/gi) || [];
+  const propsStr = attr.match(/\s*([^=]*)\s*=\s*"([^"]*)"/gi) || [];
+
   return Object.assign(
     {},
     ...propsStr
       .map(s => {
-        let arr = s.split('=');
+        const arr = s.split('=');
         return {
           [(arr[0] || '').trim()]: (arr[1] || '').replace(/\s*["]+/g, '')
         };
@@ -16,23 +17,30 @@ const extractPropsFromString = attr => {
 };
 
 const cloneElement = (el, lastChild) => {
-  if (!el) return [];
-  if (!Array.isArray(lastChild)) lastChild = [lastChild];
+  if (!el) {
+    return [];
+  }
+  if (!Array.isArray(lastChild)) {
+    lastChild = [lastChild];
+  }
   if (el.props && el.props.children) {
     return React.cloneElement(
       el,
       {},
       cloneElement(el.props.children, lastChild)
     );
-  } else if (el.props) {
-    return React.cloneElement(el, {}, [...lastChild]);
-  } else {
-    return [el, [...lastChild]];
   }
+  if (el.props && (lastChild[0] !== '')) {
+    return React.cloneElement(el, {}, [...lastChild]);
+  }
+  if (el.props) {
+    return React.cloneElement(el, {});
+  }
+  return [el, [...lastChild]];
 };
 
 /**
- * 
+ *
  * const fn = (tag, props) => {
     if (tag === 'mention') {
       return <MentionBlock />;
@@ -46,30 +54,62 @@ const cloneElement = (el, lastChild) => {
   }
  */
 
-const parseText = (text = '', fn = () => {}) => {
-  let tags = [];
+const voidTags = ['area', 'base', 'br', 'col', 'hr', 'img', 'input', 'link', 'meta', 'param', 'command', 'keygen', 'source'];
+
+const parseText = (text = '', fn = () => { }) => {
+  const tags = [];
   let preTreeLen = 0;
   let nodes = [];
   let matches = text.matchAll(/<\s*(\/\s*)*([^>\s]*)[^><]*>/gi);
   matches = Array.from(matches);
 
-  for (let match of matches) {
+  for (const match of matches) {
     let [substring, isClosing, tag] = match;
-    let index = match['index'];
+    const index = match['index'];
     tag = (tag || '').trim();
-    isClosing = (isClosing || '').trim();
     substring = (substring || '').trim();
-    if (!isClosing) {
+    isClosing = (isClosing || '').trim();
+    const selfClosing = voidTags.includes(tag) || /<([^/>]+)\/>/.test(substring);
+
+    if (selfClosing) {
+      const attr = substring.replace(/[<>]/gi, '').replace(tag, '');
+      const props = extractPropsFromString(attr);
+      let JsxEl = fn(tag, { ...props });
+
+      JsxEl = cloneElement(
+        JsxEl,
+        ''
+      );
+
+      nodes = [...nodes];
+
+      if (preTreeLen <= tags.length) {
+        nodes = [
+          ...nodes,
+          JsxEl,
+          text.slice(
+            text.indexOf('>', index) + 1,
+            text.indexOf('<', index + 1) === -1 ?
+              Infinity :
+              text.indexOf('<', index + 1)
+          )
+        ];
+      } else {
+        nodes = cloneElement(JsxEl, nodes);
+      }
+
+      preTreeLen = tags.length;
+    } else if (!isClosing) {
       tags.push({ tag, substring, index });
     } else if (
       isClosing &&
       tags.length > 0 &&
       tag === tags[tags.length - 1].tag
     ) {
-      let tagObj = tags.pop();
+      const tagObj = tags.pop();
       const { substring, tag } = tagObj;
-      let attr = substring.replace(/[<>]/gi, '').replace(tag, '');
-      let props = extractPropsFromString(attr);
+      const attr = substring.replace(/[<>]/gi, '').replace(tag, '');
+      const props = extractPropsFromString(attr);
       let JsxEl = fn(tag, { ...props });
 
       JsxEl = cloneElement(
@@ -88,14 +128,15 @@ const parseText = (text = '', fn = () => {}) => {
           JsxEl,
           text.slice(
             text.indexOf('>', index) + 1,
-            text.indexOf('<', index + 1) == -1
-              ? Infinity
-              : text.indexOf('<', index + 1)
+            text.indexOf('<', index + 1) === -1 ?
+              Infinity :
+              text.indexOf('<', index + 1)
           )
         ];
       } else {
         nodes = cloneElement(JsxEl, nodes);
       }
+
       preTreeLen = tags.length;
     } else {
       throw Error('Invalid string, no matching tag "' + tag + '"');
@@ -104,12 +145,12 @@ const parseText = (text = '', fn = () => {}) => {
   if (tags.length !== 0) {
     throw Error(
       'Invalid string, no matching tags : "' +
-        (tags.map(t => t.tag) || '').toString() +
-        '"'
+      (tags.map(t => t.tag) || '').toString() +
+      '"'
     );
   }
   return [
-    text.slice(0, text.indexOf('<') == -1 ? Infinity : text.indexOf('<')),
+    text.slice(0, text.indexOf('<') === -1 ? Infinity : text.indexOf('<')),
     ...nodes
   ];
 };
